@@ -259,6 +259,20 @@
     toastTimer = setTimeout(() => { toast.hidden = true; }, duration);
   }
 
+  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (message?.type !== 'CHATPDF_DIAGNOSTICS') return false;
+    const stats = dom.getConversationStats();
+    sendResponse({
+      ok: true,
+      title: dom.getConversationTitle(),
+      stats,
+      harvesting: dom.isHarvesting(),
+      selectionMode: selection.getMode(),
+      host: location.host
+    });
+    return false;
+  });
+
   function boot() {
     createUi();
     dom.startCapture();
