@@ -10,8 +10,8 @@ const background = fs.readFileSync('src/background.js', 'utf8');
 const shared = fs.readFileSync('src/shared.js', 'utf8');
 
 test('manifest and runtime versions stay aligned', () => {
-  assert.equal(manifest.version, '0.2.0');
-  assert.match(shared, /VERSION:\s*'0\.2\.0'/);
+  assert.equal(manifest.version, '0.3.0');
+  assert.match(shared, /VERSION:\s*'0\.3\.0'/);
 });
 
 test('popup diagnostics can inspect the active ChatGPT tab', () => {
@@ -20,17 +20,14 @@ test('popup diagnostics can inspect the active ChatGPT tab', () => {
   assert.match(popup, /CHATPDF_DIAGNOSTICS/);
   assert.match(content, /CHATPDF_DIAGNOSTICS/);
   assert.match(content, /getConversationStats\(\)/);
-  for (const id of ['page-status', 'turn-count', 'completeness', 'credentials', 'refresh']) {
+  for (const id of ['page-status', 'turn-count', 'completeness', 'pdf-engine', 'refresh']) {
     assert.ok(popupHtml.includes(`id="${id}"`), `missing diagnostics element: ${id}`);
   }
 });
 
-test('PDFCrowd errors are mapped to actionable messages', () => {
-  assert.match(background, /friendlyPdfCrowdError/);
-  assert.match(background, /status === 401 \|\| status === 403/);
-  assert.match(background, /status === 429/);
-  assert.match(background, /status >= 500/);
-  assert.match(background, /PDFCROWD_TIMEOUT_MS/);
-  assert.match(background, /AbortController/);
-  assert.match(background, /timed out after 90 seconds/);
+test('manifest has no external PDF host or download dependency', () => {
+  assert.ok(!manifest.permissions.includes('downloads'));
+  assert.ok(!manifest.host_permissions || manifest.host_permissions.length === 0);
+  assert.doesNotMatch(background, /pdfcrowd/i);
+  assert.match(background, /chrome\.tabs\.create/);
 });
