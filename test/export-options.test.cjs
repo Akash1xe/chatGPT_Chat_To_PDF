@@ -7,23 +7,28 @@ const exporter = fs.readFileSync('src/export.js', 'utf8');
 const background = fs.readFileSync('src/background.js', 'utf8');
 const content = fs.readFileSync('src/content.js', 'utf8');
 const options = fs.readFileSync('options.html', 'utf8');
+const optionsJs = fs.readFileSync('options.js', 'utf8');
 const printJs = fs.readFileSync('print.js', 'utf8');
 
-test('advanced defaults exist without external service settings', () => {
-  for (const key of ['titleMode','customTitle','hideUserQuestions','questionBackground','questionForeground','questionAlign','questionRounded','pageBreakMode','tocMode','showModelName','includeExportDatetime']) {
+test('snapshot fidelity defaults exist without external service settings', () => {
+  for (const key of ['fidelityMode','titleMode','customTitle','hideUserQuestions','pageBreakMode','tocMode','showModelName','includeExportDatetime']) {
     assert.match(shared, new RegExp(key));
   }
+  assert.match(shared, /fidelityMode:\s*'snapshot'/);
   assert.doesNotMatch(shared, /pdfcrowd/i);
   assert.doesNotMatch(shared, /singlePage/);
+  assert.doesNotMatch(shared, /questionBackground/);
 });
 
-test('export builder supports title, TOC and user styling', () => {
-  for (const token of ['buildToc','hideUserQuestions','pdf-page-break','questionBackground','questionForeground','questionAlign','showModelName','includeExportDatetime']) {
+test('export builder supports optional document structure without repainting ChatGPT', () => {
+  for (const token of ['buildToc','hideUserQuestions','pdf-page-break','showModelName','includeExportDatetime']) {
     assert.match(exporter, new RegExp(token));
   }
+  assert.doesNotMatch(exporter, /questionBackground/);
+  assert.doesNotMatch(exporter, /questionForeground/);
 });
 
-test('local print flow replaces PDFCrowd conversion', () => {
+test('local print flow remains fully local', () => {
   assert.match(exporter, /PRINT_OPEN/);
   assert.match(background, /PRINT_SESSION_INFO/);
   assert.match(background, /PRINT_GET_CHUNK/);
@@ -39,10 +44,14 @@ test('quick format presets remain available without unsupported single-page mode
   assert.doesNotMatch(content, /preset-single/);
 });
 
-test('advanced controls are exposed without credentials or single-page controls', () => {
-  for (const id of ['titleMode','customTitle','tocMode','pageBreakMode','hideUserQuestions','questionBackground','questionForeground','questionAlign','questionRounded','showModelName','includeExportDatetime']) {
+test('options explain and preserve native ChatGPT appearance', () => {
+  for (const id of ['titleMode','customTitle','tocMode','pageBreakMode','hideUserQuestions','showModelName','includeExportDatetime']) {
     assert.match(options, new RegExp(`id=\\"${id}\\"`));
   }
+  assert.match(options, /Snapshot fidelity is enabled/);
+  assert.doesNotMatch(options, /id=\"theme\"/);
+  assert.doesNotMatch(options, /questionBackground/);
+  assert.doesNotMatch(options, /questionForeground/);
+  assert.match(optionsJs, /fidelityMode:\s*'snapshot'/);
   assert.doesNotMatch(options, /pdfcrowd/i);
-  assert.doesNotMatch(options, /id=\"singlePage\"/);
 });
