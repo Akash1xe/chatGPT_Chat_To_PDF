@@ -1,13 +1,12 @@
 'use strict';
 
 window.ChatPdfShared = {
-  VERSION: '0.2.0',
+  VERSION: '0.3.0',
   TURN_SELECTOR: 'section[data-testid^="conversation-turn"], article',
   defaults: {
     exportMode: 'full',
     pageSize: 'a4',
     orientation: 'portrait',
-    singlePage: false,
     titleMode: 'conversation',
     customTitle: '',
     includeSourceLink: true,
@@ -26,9 +25,7 @@ window.ChatPdfShared = {
     pageBreakMode: 'none',
     tocMode: 'none',
     showModelName: false,
-    modelName: 'ChatGPT',
-    pdfcrowdUsername: '',
-    pdfcrowdApiKey: ''
+    modelName: 'ChatGPT'
   },
 
   async getOptions() {
