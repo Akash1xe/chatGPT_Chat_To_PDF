@@ -27,7 +27,6 @@
           <button data-action="preset-a4l" type="button">A4 Landscape</button>
           <button data-action="preset-lp" type="button">Letter Portrait</button>
           <button data-action="preset-ll" type="button">Letter Landscape</button>
-          <button data-action="preset-single" type="button">Single Page</button>
           <hr>
           <button data-action="options" type="button">Options</button>
         </div>
@@ -66,7 +65,6 @@
     const toast = document.createElement('div');
     toast.id = 'chatpdf-toast';
     toast.hidden = true;
-
     document.body.append(root, selectionBar, loading, incomplete, toast);
     bindUi(root, selectionBar, loading, incomplete);
   }
@@ -83,11 +81,10 @@
       if (!button) return;
       menu.hidden = true;
       const presetMap = {
-        'preset-a4p': { pageSize: 'a4', orientation: 'portrait', singlePage: false },
-        'preset-a4l': { pageSize: 'a4', orientation: 'landscape', singlePage: false },
-        'preset-lp': { pageSize: 'letter', orientation: 'portrait', singlePage: false },
-        'preset-ll': { pageSize: 'letter', orientation: 'landscape', singlePage: false },
-        'preset-single': { singlePage: true }
+        'preset-a4p': { pageSize: 'a4', orientation: 'portrait' },
+        'preset-a4l': { pageSize: 'a4', orientation: 'landscape' },
+        'preset-lp': { pageSize: 'letter', orientation: 'portrait' },
+        'preset-ll': { pageSize: 'letter', orientation: 'landscape' }
       };
       if (presetMap[button.dataset.action]) {
         await exportFullConversation(saveButton, presetMap[button.dataset.action]);
@@ -119,12 +116,7 @@
           turns = selection.resolveRangeFromTurns(allTurns);
           const expected = range.end - range.start + 1;
           if (turns.length < expected) {
-            const proceed = await confirmPartial({
-              captured: turns.length,
-              total: expected,
-              missing: [],
-              placeholders: 0
-            }, 'The selected range could not be captured completely.');
+            const proceed = await confirmPartial({ captured: turns.length, total: expected, missing: [], placeholders: 0 }, 'The selected range could not be captured completely.');
             if (!proceed) return;
           }
         } else {
@@ -207,8 +199,7 @@
   }
 
   function resolvePartial(value) {
-    const overlay = document.getElementById('chatpdf-incomplete-overlay');
-    overlay.hidden = true;
+    document.getElementById('chatpdf-incomplete-overlay').hidden = true;
     const resolve = partialResolver;
     partialResolver = null;
     resolve?.(value);
@@ -229,13 +220,12 @@
     try {
       if (!keepBusy) setBusy(button, true, 'Preparing…');
       await exporter.exportTurns(turns, overrides, (status) => {
-        setBusy(button, true, status.includes('Generating') ? 'Generating…' : 'Preparing…');
-        showToast(status, false, 1400);
+        setBusy(button, true, status.includes('print') || status.includes('Chrome') ? 'Opening…' : 'Preparing…');
+        showToast(status, false, 1600);
       });
-      showToast('PDF download started.');
+      showToast('Chrome print preview opened. Choose “Save as PDF”.', false, 5000);
     } catch (error) {
       showToast(error.message || String(error), true, 7000);
-      if ((error.message || '').includes('credentials')) chrome.runtime.sendMessage({ type: 'OPEN_OPTIONS' });
       throw error;
     } finally {
       exporting = false;
@@ -278,9 +268,6 @@
     dom.startCapture();
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', boot, { once: true });
-  } else {
-    boot();
-  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
+  else boot();
 })();
