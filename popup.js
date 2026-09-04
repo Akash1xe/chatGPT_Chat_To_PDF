@@ -5,7 +5,6 @@ const versionEl = document.getElementById('version');
 const pageStatusEl = document.getElementById('page-status');
 const turnCountEl = document.getElementById('turn-count');
 const completenessEl = document.getElementById('completeness');
-const credentialsEl = document.getElementById('credentials');
 const guidanceEl = document.getElementById('guidance');
 const statusMessageEl = document.getElementById('status-message');
 
@@ -22,10 +21,6 @@ async function getActiveTab() {
 async function refreshDiagnostics() {
   statusMessageEl.textContent = 'Checking current tab…';
   setValue(versionEl, shared.VERSION, 'ok');
-
-  const options = await shared.getOptions();
-  const credentialsReady = Boolean(options.pdfcrowdUsername && options.pdfcrowdApiKey);
-  setValue(credentialsEl, credentialsReady ? 'Configured' : 'Missing', credentialsReady ? 'ok' : 'warn');
 
   let tab;
   try {
@@ -58,7 +53,7 @@ async function refreshDiagnostics() {
     }
 
     guidanceEl.textContent = diagnostics.stats?.captured
-      ? `Conversation detected: ${diagnostics.title || 'ChatGPT conversation'}. Use the Save PDF controls on the page.`
+      ? `Conversation detected: ${diagnostics.title || 'ChatGPT conversation'}. Use Save PDF on the page; Chrome will open a local print preview.`
       : 'ChatGPT is open, but no conversation turns are currently detected. Open a conversation or refresh the tab.';
     statusMessageEl.textContent = diagnostics.harvesting ? 'Conversation harvesting is currently running.' : 'Status is up to date.';
   } catch (_) {
@@ -71,8 +66,5 @@ async function refreshDiagnostics() {
 }
 
 document.getElementById('refresh').addEventListener('click', refreshDiagnostics);
-document.getElementById('options').addEventListener('click', () => {
-  chrome.runtime.openOptionsPage();
-});
-
+document.getElementById('options').addEventListener('click', () => chrome.runtime.openOptionsPage());
 refreshDiagnostics();
