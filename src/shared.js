@@ -1,15 +1,16 @@
 'use strict';
 
 window.ChatPdfShared = {
-  VERSION: '0.3.0',
+  VERSION: '0.4.0',
   TURN_SELECTOR: 'section[data-testid^="conversation-turn"], article',
   defaults: {
     exportMode: 'full',
     pageSize: 'a4',
     orientation: 'portrait',
-    titleMode: 'conversation',
+    fidelityMode: 'snapshot',
+    titleMode: 'none',
     customTitle: '',
-    includeSourceLink: true,
+    includeSourceLink: false,
     includeExportDatetime: false,
     datetimeFormat: 'locale',
     theme: 'auto',
