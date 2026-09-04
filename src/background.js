@@ -2,6 +2,7 @@
 
 const sessions = new Map();
 const SESSION_TTL_MS = 10 * 60 * 1000;
+const PDFCROWD_TIMEOUT_MS = 90 * 1000;
 
 function cleanupSessions() {
   const now = Date.now();
@@ -23,6 +24,20 @@ async function compressHtml(html) {
   }
 }
 
+function friendlyPdfCrowdError(status, rawMessage) {
+  const detail = (rawMessage || '').trim();
+  if (status === 401 || status === 403) {
+    return 'PDFCrowd rejected the credentials. Open extension Options and verify the username and API key.';
+  }
+  if (status === 429) {
+    return 'PDFCrowd rate limit or account quota reached. Try again later or check your PDFCrowd account limits.';
+  }
+  if (status >= 500) {
+    return `PDFCrowd is temporarily unavailable (${status}). Try the export again later.`;
+  }
+  return detail || `PDFCrowd request failed (${status}).`;
+}
+
 async function convertWithPdfCrowd(html, config) {
   const file = await compressHtml(html);
   const formData = new FormData();
@@ -35,14 +50,30 @@ async function convertWithPdfCrowd(html, config) {
   }
 
   const auth = btoa(`${config.username}:${config.apiKey}`);
-  const response = await fetch('https://api.pdfcrowd.com/convert/24.04/', {
-    method: 'POST', headers: { Authorization: `Basic ${auth}` }, body: formData
-  });
-  if (!response.ok) {
-    const message = await response.text();
-    throw new Error(message || `PDFCrowd request failed (${response.status}).`);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), PDFCROWD_TIMEOUT_MS);
+
+  try {
+    const response = await fetch('https://api.pdfcrowd.com/convert/24.04/', {
+      method: 'POST',
+      headers: { Authorization: `Basic ${auth}` },
+      body: formData,
+      signal: controller.signal
+    });
+
+    if (!response.ok) {
+      const message = await response.text();
+      throw new Error(friendlyPdfCrowdError(response.status, message));
+    }
+    return response.blob();
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      throw new Error('PDF generation timed out after 90 seconds. Try again or export a smaller selection.');
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
   }
-  return response.blob();
 }
 
 function blobToDataUrl(blob) {
@@ -77,7 +108,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         sessions.delete(message.sessionId);
         const pdfBlob = await convertWithPdfCrowd(html, message.config || {});
         const dataUrl = await blobToDataUrl(pdfBlob);
-        const downloadId = await chrome.downloads.download({ url: dataUrl, filename: message.filename || 'chatgpt-conversation.pdf', saveAs: true });
+        const downloadId = await chrome.downloads.download({
+          url: dataUrl,
+          filename: message.filename || 'chatgpt-conversation.pdf',
+          saveAs: true
+        });
         sendResponse({ ok: true, downloadId });
       } catch (error) {
         sendResponse({ ok: false, error: error?.message || String(error) });
