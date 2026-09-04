@@ -3,12 +3,11 @@
 (async () => {
   const shared = window.ChatPdfShared;
   const valueFields = [
-    'pageSize','orientation','titleMode','customTitle','theme','pageBreakMode','tocMode',
-    'datetimeFormat','marginTop','marginRight','marginBottom','marginLeft','modelName',
-    'questionBackground','questionForeground','questionAlign'
+    'pageSize','orientation','titleMode','customTitle','pageBreakMode','tocMode',
+    'datetimeFormat','marginTop','marginRight','marginBottom','marginLeft','modelName'
   ];
   const checkFields = [
-    'includeSourceLink','includeExportDatetime','showModelName','hideUserQuestions','questionRounded'
+    'includeSourceLink','includeExportDatetime','showModelName','hideUserQuestions'
   ];
 
   const options = await shared.getOptions();
@@ -22,12 +21,23 @@
   });
 
   document.getElementById('save').addEventListener('click', async () => {
-    const next = { ...options };
-    valueFields.forEach((id) => { next[id] = document.getElementById(id).value.trim(); });
-    checkFields.forEach((id) => { next[id] = document.getElementById(id).checked; });
-    delete next.pdfcrowdUsername;
-    delete next.pdfcrowdApiKey;
-    delete next.singlePage;
+    const next = { ...options, fidelityMode: 'snapshot' };
+    valueFields.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) next[id] = el.value.trim();
+    });
+    checkFields.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) next[id] = el.checked;
+    });
+
+    for (const legacyKey of [
+      'pdfcrowdUsername','pdfcrowdApiKey','singlePage','theme',
+      'questionBackground','questionForeground','questionAlign','questionRounded'
+    ]) {
+      delete next[legacyKey];
+    }
+
     await shared.saveOptions(next);
     const status = document.getElementById('status');
     status.textContent = 'Saved';
