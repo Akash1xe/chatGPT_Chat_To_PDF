@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "ChatGPT Chat to PDF",
+  "version": "0.1.0",
+  "description": "Export full ChatGPT conversations or selected message ranges to PDF.",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "ChatGPT Chat to PDF"
+  },
+  "background": {
+    "service_worker": "src/background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://chatgpt.com/*", "https://chat.com/*"],
+      "js": [
+        "src/shared.js",
+        "src/chatgpt-dom.js",
+        "src/selection.js",
+        "src/export.js",
+        "src/content.js"
+      ],
+      "css": ["src/content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "permissions": ["storage", "downloads"],
+  "host_permissions": ["https://api.pdfcrowd.com/*"],
+  "minimum_chrome_version": "100"
+}
