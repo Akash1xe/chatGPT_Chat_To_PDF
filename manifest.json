@@ -16,6 +16,7 @@
       "js": [
         "src/shared.js",
         "src/chatgpt-dom.js",
+        "src/selection-core.js",
         "src/selection.js",
         "src/export.js",
         "src/content.js"
