@@ -2,7 +2,6 @@
 
 A Chrome Manifest V3 extension that exports ChatGPT conversations to PDF.
 
-The project is inspired by the MIT-licensed [`pdfcrowd/save-chatgpt-as-pdf`](https://github.com/pdfcrowd/save-chatgpt-as-pdf) project, but is being rebuilt with a cleaner modular structure and an expanded selection workflow.
 
 ## Current features
 
