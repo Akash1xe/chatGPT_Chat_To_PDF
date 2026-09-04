@@ -6,6 +6,7 @@
   const exporter = window.ChatPdfExport;
   let toastTimer = null;
   let exporting = false;
+  let partialResolver = null;
 
   function createUi() {
     if (document.getElementById('chatpdf-root')) return;
@@ -36,13 +37,41 @@
     selectionBar.id = 'chatpdf-selection-bar';
     selectionBar.hidden = true;
     selectionBar.innerHTML = `<span id="chatpdf-selection-status">Select messages for PDF</span><button id="chatpdf-selection-export" class="chatpdf-button chatpdf-primary" type="button">Export selected</button><button id="chatpdf-selection-cancel" class="chatpdf-button" type="button">Cancel</button>`;
+
+    const loading = document.createElement('div');
+    loading.id = 'chatpdf-loading-overlay';
+    loading.hidden = true;
+    loading.innerHTML = `
+      <div class="chatpdf-dialog chatpdf-loading-dialog">
+        <div class="chatpdf-spinner" aria-hidden="true"></div>
+        <strong>Loading conversation…</strong>
+        <span id="chatpdf-loading-progress">Preparing messages</span>
+        <button id="chatpdf-loading-cancel" class="chatpdf-button" type="button">Cancel</button>
+      </div>`;
+
+    const incomplete = document.createElement('div');
+    incomplete.id = 'chatpdf-incomplete-overlay';
+    incomplete.hidden = true;
+    incomplete.innerHTML = `
+      <div class="chatpdf-dialog">
+        <h2>Conversation may be incomplete</h2>
+        <p id="chatpdf-incomplete-message"></p>
+        <p>Some older messages are still not available. You can export the captured part now or cancel and scroll through the conversation before trying again.</p>
+        <div class="chatpdf-dialog-actions">
+          <button id="chatpdf-save-partial" class="chatpdf-button chatpdf-primary" type="button">Save captured part</button>
+          <button id="chatpdf-partial-cancel" class="chatpdf-button" type="button">Cancel</button>
+        </div>
+      </div>`;
+
     const toast = document.createElement('div');
-    toast.id = 'chatpdf-toast'; toast.hidden = true;
-    document.body.append(root, selectionBar, toast);
-    bindUi(root, selectionBar);
+    toast.id = 'chatpdf-toast';
+    toast.hidden = true;
+
+    document.body.append(root, selectionBar, loading, incomplete, toast);
+    bindUi(root, selectionBar, loading, incomplete);
   }
 
-  function bindUi(root, selectionBar) {
+  function bindUi(root, selectionBar, loading, incomplete) {
     const saveButton = root.querySelector('#chatpdf-save');
     const menuToggle = root.querySelector('#chatpdf-menu-toggle');
     const menu = root.querySelector('#chatpdf-menu');
@@ -74,6 +103,9 @@
     });
 
     document.addEventListener('click', (event) => { if (!root.contains(event.target)) menu.hidden = true; });
+    loading.querySelector('#chatpdf-loading-cancel').addEventListener('click', () => dom.cancelHarvest());
+    incomplete.querySelector('#chatpdf-save-partial').addEventListener('click', () => resolvePartial(true));
+    incomplete.querySelector('#chatpdf-partial-cancel').addEventListener('click', () => resolvePartial(false));
 
     selectionBar.querySelector('#chatpdf-selection-export').addEventListener('click', async () => {
       try {
@@ -82,42 +114,112 @@
           const range = selection.getRange();
           if (!range) { showToast('Choose both the start and end message first.', true); return; }
           setBusy(saveButton, true, 'Loading range…');
-          const allTurns = await dom.harvestConversation((count) => { saveButton.textContent = `Loading ${count}…`; });
+          const allTurns = await harvestForExport();
+          if (!allTurns) return;
           turns = selection.resolveRangeFromTurns(allTurns);
-        } else turns = selection.getSelectedTurns();
+          const expected = range.end - range.start + 1;
+          if (turns.length < expected) {
+            const proceed = await confirmPartial({
+              captured: turns.length,
+              total: expected,
+              missing: [],
+              placeholders: 0
+            }, 'The selected range could not be captured completely.');
+            if (!proceed) return;
+          }
+        } else {
+          turns = selection.getSelectedTurns();
+        }
         if (!turns.length) { showToast('No messages were found for this selection.', true); return; }
         await runExport(turns, saveButton, {}, true);
-        selection.stop(); selectionBar.hidden = true;
-      } catch (error) { showToast(error.message || String(error), true, 7000); }
-      finally { setBusy(saveButton, false, 'Save PDF'); }
+        selection.stop();
+        selectionBar.hidden = true;
+      } catch (error) {
+        showToast(error.message || String(error), true, 7000);
+      } finally {
+        setBusy(saveButton, false, 'Save PDF');
+      }
     });
 
-    selectionBar.querySelector('#chatpdf-selection-cancel').addEventListener('click', () => { selection.stop(); selectionBar.hidden = true; });
+    selectionBar.querySelector('#chatpdf-selection-cancel').addEventListener('click', () => {
+      selection.stop();
+      selectionBar.hidden = true;
+    });
   }
 
   function startSelectionMode(mode, selectionBar) {
-    const status = selectionBar.querySelector('#chatpdf-selection-status'); selectionBar.hidden = false;
+    const status = selectionBar.querySelector('#chatpdf-selection-status');
+    selectionBar.hidden = false;
     const onChange = ({ count, range }) => {
       status.textContent = mode === 'range'
         ? (range ? `Messages ${range.start}–${range.end} selected` : 'Choose the first message, then choose the last')
         : (count ? `${count} message${count === 1 ? '' : 's'} selected` : 'Choose individual messages to include');
     };
-    if (mode === 'range') selection.startRangeSelection(onChange); else selection.startMessageSelection(onChange);
+    if (mode === 'range') selection.startRangeSelection(onChange);
+    else selection.startMessageSelection(onChange);
+  }
+
+  async function harvestForExport() {
+    const overlay = document.getElementById('chatpdf-loading-overlay');
+    const progress = document.getElementById('chatpdf-loading-progress');
+    overlay.hidden = false;
+    try {
+      const turns = await dom.harvestConversation((stats) => {
+        const total = stats.total || '?';
+        progress.textContent = `${stats.captured} / ${total} messages captured`;
+      });
+      if (dom.wasHarvestCancelled()) {
+        showToast('Conversation loading cancelled.');
+        return null;
+      }
+      return turns;
+    } finally {
+      overlay.hidden = true;
+    }
   }
 
   async function exportFullConversation(button, overrides = {}) {
-    if (exporting) return;
+    if (exporting || dom.isHarvesting()) return;
     try {
       setBusy(button, true, 'Loading chat…');
-      const turns = await dom.harvestConversation((count) => { button.textContent = `Loading ${count}…`; });
+      const turns = await harvestForExport();
+      if (!turns) return;
+      const stats = dom.getConversationStats();
+      if (stats.incomplete) {
+        const proceed = await confirmPartial(stats);
+        if (!proceed) return;
+      }
       await runExport(turns, button, overrides, true);
-    } catch (error) { showToast(error.message || String(error), true); }
-    finally { setBusy(button, false, 'Save PDF'); }
+    } catch (error) {
+      showToast(error.message || String(error), true);
+    } finally {
+      setBusy(button, false, 'Save PDF');
+    }
+  }
+
+  function confirmPartial(stats, prefix = '') {
+    const overlay = document.getElementById('chatpdf-incomplete-overlay');
+    const message = document.getElementById('chatpdf-incomplete-message');
+    const missingCount = stats.missing?.length || Math.max(0, (stats.total || 0) - (stats.captured || 0));
+    message.textContent = `${prefix ? `${prefix} ` : ''}${stats.captured} messages were captured${stats.total ? ` out of ${stats.total}` : ''}.${missingCount ? ` ${missingCount} numbered message${missingCount === 1 ? '' : 's'} appear to be missing.` : ''}`;
+    overlay.hidden = false;
+    return new Promise((resolve) => { partialResolver = resolve; });
+  }
+
+  function resolvePartial(value) {
+    const overlay = document.getElementById('chatpdf-incomplete-overlay');
+    overlay.hidden = true;
+    const resolve = partialResolver;
+    partialResolver = null;
+    resolve?.(value);
   }
 
   async function exportBrowserSelection(button) {
     const turns = selection.getBrowserSelectionTurns();
-    if (!turns.length) { showToast('Highlight some text in the chat first, then choose Browser text selection.', true); return; }
+    if (!turns.length) {
+      showToast('Highlight some text in the chat first, then choose Browser text selection.', true);
+      return;
+    }
     await runExport(turns, button);
   }
 
@@ -141,12 +243,30 @@
     }
   }
 
-  function setBusy(button, busy, label) { if (!button) return; button.disabled = busy; button.textContent = label; }
+  function setBusy(button, busy, label) {
+    if (!button) return;
+    button.disabled = busy;
+    button.textContent = label;
+  }
+
   function showToast(message, isError = false, duration = 3200) {
-    const toast = document.getElementById('chatpdf-toast'); if (!toast) return;
-    clearTimeout(toastTimer); toast.textContent = message; toast.classList.toggle('chatpdf-error', isError); toast.hidden = false;
+    const toast = document.getElementById('chatpdf-toast');
+    if (!toast) return;
+    clearTimeout(toastTimer);
+    toast.textContent = message;
+    toast.classList.toggle('chatpdf-error', isError);
+    toast.hidden = false;
     toastTimer = setTimeout(() => { toast.hidden = true; }, duration);
   }
-  function boot() { createUi(); dom.startCapture(); }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true }); else boot();
+
+  function boot() {
+    createUi();
+    dom.startCapture();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot, { once: true });
+  } else {
+    boot();
+  }
 })();
