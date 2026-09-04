@@ -1,4 +1,4 @@
-' strict';
+'use strict';
 
 (() => {
   const dom = window.ChatPdfDom;
@@ -96,14 +96,38 @@
     });
 
     selectionBar.querySelector('#chatpdf-selection-export').addEventListener('click', async () => {
-      const turns = selection.getSelectedTurns();
-      if (!turns.length) {
-        showToast('Select at least one message first.', true);
-        return;
+      try {
+        let turns;
+
+        if (selection.getMode() === 'range') {
+          const range = selection.getRange();
+          if (!range) {
+            showToast('Choose both the start and end message first.', true);
+            return;
+          }
+
+          setBusy(saveButton, true, 'Loading range…');
+          const allTurns = await dom.harvestConversation((count) => {
+            saveButton.textContent = `Loading ${count}…`;
+          });
+          turns = selection.resolveRangeFromTurns(allTurns);
+        } else {
+          turns = selection.getSelectedTurns();
+        }
+
+        if (!turns.length) {
+          showToast('No messages were found for this selection.', true);
+          return;
+        }
+
+        await runExport(turns, saveButton, true);
+        selection.stop();
+        selectionBar.hidden = true;
+      } catch (error) {
+        showToast(error.message || String(error), true, 7000);
+      } finally {
+        setBusy(saveButton, false, 'Save PDF');
       }
-      await runExport(turns, saveButton);
-      selection.stop();
-      selectionBar.hidden = true;
     });
 
     selectionBar.querySelector('#chatpdf-selection-cancel').addEventListener('click', () => {
@@ -116,10 +140,10 @@
     const status = selectionBar.querySelector('#chatpdf-selection-status');
     selectionBar.hidden = false;
 
-    const onChange = ({ count }) => {
+    const onChange = ({ count, range }) => {
       if (mode === 'range') {
-        status.textContent = count
-          ? `${count} messages in range selected`
+        status.textContent = range
+          ? `Messages ${range.start}–${range.end} selected`
           : 'Choose the first message, then choose the last';
       } else {
         status.textContent = count
