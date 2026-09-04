@@ -10,8 +10,8 @@ const background = fs.readFileSync('src/background.js', 'utf8');
 const shared = fs.readFileSync('src/shared.js', 'utf8');
 
 test('manifest and runtime versions stay aligned', () => {
-  assert.equal(manifest.version, '0.3.0');
-  assert.match(shared, /VERSION:\s*'0\.3\.0'/);
+  assert.equal(manifest.version, '0.4.0');
+  assert.match(shared, /VERSION:\s*'0\.4\.0'/);
 });
 
 test('popup diagnostics can inspect the active ChatGPT tab', () => {
