@@ -13,7 +13,6 @@
     .grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
     label { display:grid; gap:6px; font-size:13px; font-weight:700; }
     input,select { width:100%; box-sizing:border-box; border:1px solid #d1d5db; border-radius:9px; padding:9px 10px; font:inherit; background:white; }
-    input[type="color"] { min-height:40px; padding:4px; }
     .full { grid-column:1 / -1; }
     .check { display:flex; align-items:center; gap:8px; font-weight:600; }
     .check input { width:auto; }
@@ -26,16 +25,15 @@
 <body>
 <main><div class="card">
   <h1>ChatGPT Chat to PDF</h1>
-  <p>Configure local PDF layout and transcript styling.</p>
-  <div class="note">No API key or external PDF service is used. Your conversation stays in the browser. When you export, Chrome opens its native print dialog; choose <strong>Save as PDF</strong>.</div>
+  <p>Configure local PDF layout while preserving the current ChatGPT conversation appearance.</p>
+  <div class="note"><strong>Snapshot fidelity is enabled.</strong> Message colors, typography, spacing, code blocks, tables, images, and the current ChatGPT light/dark appearance are captured from the live page. No API key or external PDF service is used.</div>
 
   <h2>Document</h2>
   <div class="grid">
     <label>Page size<select id="pageSize"><option value="a4">A4</option><option value="letter">Letter</option></select></label>
     <label>Orientation<select id="orientation"><option value="portrait">Portrait</option><option value="landscape">Landscape</option></select></label>
-    <label>Title mode<select id="titleMode"><option value="conversation">Conversation title</option><option value="custom">Custom title</option><option value="none">No title</option></select></label>
+    <label>Title mode<select id="titleMode"><option value="none">No extra title</option><option value="conversation">Conversation title</option><option value="custom">Custom title</option></select></label>
     <label>Custom title<input id="customTitle" placeholder="My ChatGPT Notes"></label>
-    <label>Theme<select id="theme"><option value="auto">Auto</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
     <label>Page break<select id="pageBreakMode"><option value="none">None</option><option value="before-user">Before each user question</option><option value="each-turn">Before every message</option></select></label>
     <label>Table of contents<select id="tocMode"><option value="none">None</option><option value="questions">Question titles</option><option value="numbering">Numbered questions</option></select></label>
     <label>Datetime format<select id="datetimeFormat"><option value="locale">Local date/time</option><option value="iso">ISO</option></select></label>
@@ -43,17 +41,13 @@
     <label>Bottom margin<input id="marginBottom"></label><label>Left margin<input id="marginLeft"></label>
     <label class="check full"><input id="includeSourceLink" type="checkbox"> Include conversation link</label>
     <label class="check full"><input id="includeExportDatetime" type="checkbox"> Include exported-at date/time</label>
-    <label class="check full"><input id="showModelName" type="checkbox"> Show model name</label>
+    <label class="check full"><input id="showModelName" type="checkbox"> Add model-name annotation</label>
     <label class="full">Model name<input id="modelName" placeholder="ChatGPT"></label>
   </div>
 
-  <h2>User questions</h2>
+  <h2>Conversation structure</h2>
   <div class="grid">
     <label class="check full"><input id="hideUserQuestions" type="checkbox"> Hide user questions</label>
-    <label>Background<input id="questionBackground" type="color"></label>
-    <label>Text color<input id="questionForeground" type="color"></label>
-    <label>Alignment<select id="questionAlign"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option><option value="justify">Justified</option></select></label>
-    <label class="check"><input id="questionRounded" type="checkbox"> Rounded question boxes</label>
   </div>
 
   <button id="save" type="button">Save options</button><span id="status"></span>
