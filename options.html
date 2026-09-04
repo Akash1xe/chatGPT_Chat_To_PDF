@@ -19,21 +19,15 @@
     .check input { width:auto; }
     button { margin-top:18px; border:0; border-radius:9px; padding:10px 15px; background:#111827; color:white; font:inherit; font-weight:700; cursor:pointer; }
     #status { margin-left:10px; font-size:13px; color:#047857; }
-    .note { padding:12px; border-radius:10px; background:#eff6ff; color:#1e3a8a; font-size:13px; }
+    .note { padding:12px; border-radius:10px; background:#ecfdf5; color:#065f46; font-size:13px; }
     @media (max-width:640px) { .grid { grid-template-columns:1fr; } .full { grid-column:auto; } }
   </style>
 </head>
 <body>
 <main><div class="card">
   <h1>ChatGPT Chat to PDF</h1>
-  <p>Configure PDF generation and transcript styling.</p>
-  <div class="note">Use your own PDFCrowd credentials. They are stored in Chrome sync storage.</div>
-
-  <h2>PDFCrowd</h2>
-  <div class="grid">
-    <label class="full">Username<input id="pdfcrowdUsername"></label>
-    <label class="full">API key<input id="pdfcrowdApiKey" type="password"></label>
-  </div>
+  <p>Configure local PDF layout and transcript styling.</p>
+  <div class="note">No API key or external PDF service is used. Your conversation stays in the browser. When you export, Chrome opens its native print dialog; choose <strong>Save as PDF</strong>.</div>
 
   <h2>Document</h2>
   <div class="grid">
@@ -47,7 +41,6 @@
     <label>Datetime format<select id="datetimeFormat"><option value="locale">Local date/time</option><option value="iso">ISO</option></select></label>
     <label>Top margin<input id="marginTop"></label><label>Right margin<input id="marginRight"></label>
     <label>Bottom margin<input id="marginBottom"></label><label>Left margin<input id="marginLeft"></label>
-    <label class="check full"><input id="singlePage" type="checkbox"> Single continuous PDF page</label>
     <label class="check full"><input id="includeSourceLink" type="checkbox"> Include conversation link</label>
     <label class="check full"><input id="includeExportDatetime" type="checkbox"> Include exported-at date/time</label>
     <label class="check full"><input id="showModelName" type="checkbox"> Show model name</label>
