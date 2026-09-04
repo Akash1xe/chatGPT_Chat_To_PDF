@@ -1,19 +1,32 @@
 'use strict';
 
 window.ChatPdfShared = {
-  VERSION: '0.1.0',
+  VERSION: '0.2.0',
   TURN_SELECTOR: 'section[data-testid^="conversation-turn"], article',
   defaults: {
     exportMode: 'full',
     pageSize: 'a4',
     orientation: 'portrait',
+    singlePage: false,
     titleMode: 'conversation',
+    customTitle: '',
     includeSourceLink: true,
+    includeExportDatetime: false,
+    datetimeFormat: 'locale',
     theme: 'auto',
     marginTop: '0.4in',
     marginRight: '0.4in',
     marginBottom: '0.4in',
     marginLeft: '0.4in',
+    hideUserQuestions: false,
+    questionBackground: '#f4f4f4',
+    questionForeground: '#1f2937',
+    questionAlign: 'left',
+    questionRounded: true,
+    pageBreakMode: 'none',
+    tocMode: 'none',
+    showModelName: false,
+    modelName: 'ChatGPT',
     pdfcrowdUsername: '',
     pdfcrowdApiKey: ''
   },
