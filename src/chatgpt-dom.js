@@ -1,8 +1,6 @@
 'use strict';
 
 (() => {
-  const shared = window.ChatPdfShared;
-
   const cache = new Map();
   let cachePath = window.location.pathname;
   let captureTimer = null;
@@ -34,6 +32,17 @@
       turn.getAttribute('data-testid') ||
       `turn-${turnNumber(turn, fallbackIndex)}`
     );
+  }
+
+  function turnRole(turn) {
+    const roleNode = turn.matches?.('[data-message-author-role]')
+      ? turn
+      : turn.querySelector('[data-message-author-role]');
+    const role = roleNode?.getAttribute('data-message-author-role');
+    if (role === 'user' || role === 'assistant' || role === 'system' || role === 'tool') {
+      return role;
+    }
+    return 'unknown';
   }
 
   function findScroller() {
@@ -104,6 +113,10 @@
       node.removeAttribute('contenteditable');
     });
 
+    clone.querySelectorAll('[aria-hidden="true"]').forEach((node) => {
+      if (!node.querySelector('img, svg, canvas')) node.remove();
+    });
+
     return clone;
   }
 
@@ -121,11 +134,14 @@
       if (!turn.innerHTML.trim()) return;
       const number = turnNumber(turn, index);
       const key = turnKey(turn, index);
+      const role = turnRole(turn);
       const html = serializeTurn(turn);
       const previous = cache.get(number);
 
       if (!previous || previous.key !== key || previous.html.length < html.length) {
-        cache.set(number, { number, key, html });
+        cache.set(number, { number, key, role, html });
+      } else if (previous.role === 'unknown' && role !== 'unknown') {
+        cache.set(number, { ...previous, role });
       }
     });
     return cache;
@@ -207,6 +223,7 @@
     return {
       number: turnNumber(turn, index),
       key: turnKey(turn, index),
+      role: turnRole(turn),
       html: serializeTurn(turn)
     };
   }
@@ -215,6 +232,7 @@
     getTurns,
     turnNumber,
     turnKey,
+    turnRole,
     serializeTurn,
     captureRenderedTurns,
     harvestConversation,
