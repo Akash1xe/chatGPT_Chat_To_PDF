@@ -6,14 +6,44 @@
 
   const CHUNK_SIZE = 8 * 1024 * 1024;
 
+  function buildTurnHtml(turn) {
+    const role = ['user', 'assistant', 'system', 'tool'].includes(turn.role)
+      ? turn.role
+      : 'unknown';
+    const label = role === 'user'
+      ? 'You'
+      : role === 'assistant'
+        ? 'ChatGPT'
+        : role === 'system'
+          ? 'System'
+          : role === 'tool'
+            ? 'Tool'
+            : 'Message';
+
+    return `
+<section class="pdf-turn pdf-turn-${role}" data-pdf-role="${role}">
+  <div class="pdf-turn-label">${label}</div>
+  <div class="pdf-turn-content">${turn.html}</div>
+</section>`;
+  }
+
   function buildDocument(turns, options = {}) {
     const title = options.title || dom.getConversationTitle();
     const sourceLink = options.includeSourceLink
       ? `<p class="source-link">Source: <a href="${escapeHtml(location.href)}">${escapeHtml(location.href)}</a></p>`
       : '';
-    const body = turns.map((turn) => turn.html).join('\n');
+    const body = turns.map(buildTurnHtml).join('\n');
     const dark = options.theme === 'dark' ||
       (options.theme === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
+
+    const fg = dark ? '#ececec' : '#1f2937';
+    const muted = dark ? '#a3a3a3' : '#6b7280';
+    const pageBg = dark ? '#212121' : '#ffffff';
+    const userBg = dark ? '#2f2f2f' : '#f4f4f4';
+    const border = dark ? '#444444' : '#e5e7eb';
+    const codeBg = dark ? '#111827' : '#f7f7f8';
+    const inlineCodeBg = dark ? '#343541' : '#f1f3f5';
+    const quoteBg = dark ? '#2a2a2a' : '#fafafa';
 
     return `<!doctype html>
 <html>
@@ -26,41 +56,235 @@
     size: ${options.pageSize || 'A4'} ${options.orientation || 'portrait'};
     margin: ${options.marginTop || '0.4in'} ${options.marginRight || '0.4in'} ${options.marginBottom || '0.4in'} ${options.marginLeft || '0.4in'};
   }
+
   * { box-sizing: border-box; }
+
+  html, body { padding: 0; }
+
   body {
     margin: 0;
-    font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    line-height: 1.55;
-    color: ${dark ? '#ececec' : '#1f2937'};
-    background: ${dark ? '#212121' : '#ffffff'};
+    font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    color: ${fg};
+    background: ${pageBg};
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
-  .pdf-shell { max-width: 900px; margin: 0 auto; }
-  h1 { font-size: 24px; line-height: 1.25; margin: 0 0 8px; }
-  .source-link { margin: 0 0 24px; font-size: 11px; color: #6b7280; word-break: break-all; }
+
+  .pdf-shell {
+    width: 100%;
+    max-width: 920px;
+    margin: 0 auto;
+  }
+
+  .pdf-document-header {
+    padding-bottom: 16px;
+    border-bottom: 1px solid ${border};
+    margin-bottom: 24px;
+  }
+
+  h1 {
+    font-size: 25px;
+    line-height: 1.25;
+    margin: 0 0 8px;
+    color: ${fg};
+  }
+
+  .source-link {
+    margin: 0;
+    font-size: 10.5px;
+    color: ${muted};
+    word-break: break-all;
+  }
+
   .source-link a { color: inherit; }
-  section[data-testid^="conversation-turn"], article {
-    break-inside: avoid-page;
-    margin: 0 0 18px;
+
+  .pdf-turn {
+    margin: 0 0 22px;
+    break-inside: auto;
+    page-break-inside: auto;
   }
+
+  .pdf-turn-label {
+    font-size: 11px;
+    line-height: 1;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: ${muted};
+    margin: 0 0 7px;
+  }
+
+  .pdf-turn-content {
+    min-width: 0;
+  }
+
+  .pdf-turn-user .pdf-turn-content {
+    background: ${userBg};
+    border: 1px solid ${border};
+    border-radius: 16px;
+    padding: 13px 15px;
+  }
+
+  .pdf-turn-assistant .pdf-turn-content {
+    padding: 1px 0;
+  }
+
+  .pdf-turn-content > section,
+  .pdf-turn-content > article {
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .pdf-turn-content button,
+  .pdf-turn-content [role="button"],
+  .pdf-turn-content [data-testid="copy-turn-action-button"],
+  .pdf-select-marker {
+    display: none !important;
+  }
+
+  .pdf-turn-content p {
+    margin: .45em 0 .75em;
+  }
+
+  .pdf-turn-content p:first-child { margin-top: 0; }
+  .pdf-turn-content p:last-child { margin-bottom: 0; }
+
+  .pdf-turn-content h1,
+  .pdf-turn-content h2,
+  .pdf-turn-content h3,
+  .pdf-turn-content h4 {
+    break-after: avoid-page;
+    page-break-after: avoid;
+    line-height: 1.3;
+    margin: 1.15em 0 .45em;
+    color: ${fg};
+  }
+
+  .pdf-turn-content h1 { font-size: 21px; }
+  .pdf-turn-content h2 { font-size: 18px; }
+  .pdf-turn-content h3 { font-size: 16px; }
+  .pdf-turn-content h4 { font-size: 14px; }
+
+  .pdf-turn-content ul,
+  .pdf-turn-content ol {
+    padding-left: 1.4rem;
+    margin: .6em 0 .9em;
+  }
+
+  .pdf-turn-content li { margin: .22em 0; }
+
+  .pdf-turn-content blockquote {
+    margin: .8em 0;
+    padding: 8px 12px;
+    border-left: 3px solid ${border};
+    background: ${quoteBg};
+  }
+
   pre {
-    white-space: pre-wrap;
+    white-space: pre-wrap !important;
     overflow-wrap: anywhere;
-    padding: 12px;
-    border-radius: 8px;
-    background: ${dark ? '#111827' : '#f3f4f6'};
+    word-break: normal;
+    padding: 12px 14px !important;
+    border: 1px solid ${border};
+    border-radius: 9px !important;
+    background: ${codeBg} !important;
+    color: ${fg} !important;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 11.5px;
+    line-height: 1.5;
+    break-inside: auto;
+    page-break-inside: auto;
   }
-  code { overflow-wrap: anywhere; }
-  table { width: 100%; border-collapse: collapse; }
-  th, td { border: 1px solid ${dark ? '#4b5563' : '#d1d5db'}; padding: 6px 8px; vertical-align: top; }
-  img, svg { max-width: 100%; height: auto; }
-  a { color: ${dark ? '#93c5fd' : '#2563eb'}; }
-  .pdf-select-marker { display: none !important; }
+
+  code {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    overflow-wrap: anywhere;
+  }
+
+  :not(pre) > code {
+    padding: .12em .35em;
+    border-radius: 4px;
+    background: ${inlineCodeBg};
+    font-size: .92em;
+  }
+
+  .pdf-turn-content .overflow-x-auto,
+  .pdf-turn-content [class*="overflow-x"] {
+    overflow: visible !important;
+  }
+
+  table {
+    width: 100% !important;
+    max-width: 100%;
+    border-collapse: collapse;
+    table-layout: auto;
+    margin: .9em 0;
+    font-size: 11.5px;
+  }
+
+  thead { display: table-header-group; }
+  tr { break-inside: avoid-page; page-break-inside: avoid; }
+
+  th, td {
+    border: 1px solid ${border};
+    padding: 6px 8px;
+    vertical-align: top;
+    text-align: left;
+    overflow-wrap: anywhere;
+  }
+
+  th { font-weight: 700; background: ${userBg}; }
+
+  img {
+    display: block;
+    max-width: 100% !important;
+    height: auto !important;
+    object-fit: contain;
+    border-radius: 8px;
+    margin: .6em 0;
+    break-inside: avoid-page;
+    page-break-inside: avoid;
+  }
+
+  svg {
+    max-width: 100%;
+    height: auto;
+  }
+
+  hr {
+    border: 0;
+    border-top: 1px solid ${border};
+    margin: 1.2em 0;
+  }
+
+  a {
+    color: ${dark ? '#93c5fd' : '#2563eb'};
+    text-decoration: none;
+    overflow-wrap: anywhere;
+  }
+
+  strong { font-weight: 700; }
+
+  @media print {
+    .pdf-turn-user .pdf-turn-content,
+    pre,
+    blockquote,
+    th {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+  }
 </style>
 </head>
 <body>
   <main class="pdf-shell">
-    <h1>${escapeHtml(title)}</h1>
-    ${sourceLink}
+    <header class="pdf-document-header">
+      <h1>${escapeHtml(title)}</h1>
+      ${sourceLink}
+    </header>
     ${body}
   </main>
 </body>
@@ -125,5 +349,5 @@
     return response;
   }
 
-  window.ChatPdfExport = { buildDocument, exportTurns };
+  window.ChatPdfExport = { buildDocument, buildTurnHtml, exportTurns };
 })();
