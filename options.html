@@ -5,79 +5,65 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ChatGPT Chat to PDF Options</title>
   <style>
-    body { font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; background: #f6f7f9; color: #111827; }
-    main { max-width: 760px; margin: 40px auto; padding: 0 20px 60px; }
-    .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 22px; box-shadow: 0 8px 30px rgba(0,0,0,.06); }
-    h1 { margin-top: 0; }
-    p { color: #4b5563; }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    label { display: grid; gap: 6px; font-size: 13px; font-weight: 700; }
-    input, select { width: 100%; box-sizing: border-box; border: 1px solid #d1d5db; border-radius: 9px; padding: 9px 10px; font: inherit; background: white; }
-    .full { grid-column: 1 / -1; }
-    .check { display: flex; align-items: center; gap: 8px; font-weight: 600; }
-    .check input { width: auto; }
-    button { margin-top: 18px; border: 0; border-radius: 9px; padding: 10px 15px; background: #111827; color: white; font: inherit; font-weight: 700; cursor: pointer; }
-    #status { margin-left: 10px; font-size: 13px; color: #047857; }
-    .note { padding: 12px; border-radius: 10px; background: #eff6ff; color: #1e3a8a; font-size: 13px; }
-    @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } .full { grid-column: auto; } }
+    body { font-family: ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; margin:0; background:#f6f7f9; color:#111827; }
+    main { max-width:860px; margin:36px auto; padding:0 20px 60px; }
+    .card { background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:22px; box-shadow:0 8px 30px rgba(0,0,0,.06); }
+    h1,h2 { margin-top:0; } h2 { margin-top:26px; font-size:18px; }
+    p { color:#4b5563; }
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+    label { display:grid; gap:6px; font-size:13px; font-weight:700; }
+    input,select { width:100%; box-sizing:border-box; border:1px solid #d1d5db; border-radius:9px; padding:9px 10px; font:inherit; background:white; }
+    input[type="color"] { min-height:40px; padding:4px; }
+    .full { grid-column:1 / -1; }
+    .check { display:flex; align-items:center; gap:8px; font-weight:600; }
+    .check input { width:auto; }
+    button { margin-top:18px; border:0; border-radius:9px; padding:10px 15px; background:#111827; color:white; font:inherit; font-weight:700; cursor:pointer; }
+    #status { margin-left:10px; font-size:13px; color:#047857; }
+    .note { padding:12px; border-radius:10px; background:#eff6ff; color:#1e3a8a; font-size:13px; }
+    @media (max-width:640px) { .grid { grid-template-columns:1fr; } .full { grid-column:auto; } }
   </style>
 </head>
 <body>
-  <main>
-    <div class="card">
-      <h1>ChatGPT Chat to PDF</h1>
-      <p>Configure PDF generation. Your PDFCrowd credentials are stored with Chrome sync storage and are not committed to this repository.</p>
-      <div class="note">The extension does not reuse the reference project's embedded API credentials. Use credentials from your own PDFCrowd account.</div>
+<main><div class="card">
+  <h1>ChatGPT Chat to PDF</h1>
+  <p>Configure PDF generation and transcript styling.</p>
+  <div class="note">Use your own PDFCrowd credentials. They are stored in Chrome sync storage.</div>
 
-      <div class="grid" style="margin-top:18px">
-        <label class="full">PDFCrowd username
-          <input id="pdfcrowdUsername" autocomplete="username" placeholder="Your PDFCrowd username">
-        </label>
-        <label class="full">PDFCrowd API key
-          <input id="pdfcrowdApiKey" type="password" autocomplete="current-password" placeholder="Your PDFCrowd API key">
-        </label>
-        <label>Page size
-          <select id="pageSize">
-            <option value="a4">A4</option>
-            <option value="letter">Letter</option>
-          </select>
-        </label>
-        <label>Orientation
-          <select id="orientation">
-            <option value="portrait">Portrait</option>
-            <option value="landscape">Landscape</option>
-          </select>
-        </label>
-        <label>Theme
-          <select id="theme">
-            <option value="auto">Auto</option>
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
-          </select>
-        </label>
-        <label>Top margin
-          <input id="marginTop" value="0.4in">
-        </label>
-        <label>Right margin
-          <input id="marginRight" value="0.4in">
-        </label>
-        <label>Bottom margin
-          <input id="marginBottom" value="0.4in">
-        </label>
-        <label>Left margin
-          <input id="marginLeft" value="0.4in">
-        </label>
-        <label class="check full">
-          <input id="includeSourceLink" type="checkbox">
-          Include ChatGPT conversation link in the PDF
-        </label>
-      </div>
+  <h2>PDFCrowd</h2>
+  <div class="grid">
+    <label class="full">Username<input id="pdfcrowdUsername"></label>
+    <label class="full">API key<input id="pdfcrowdApiKey" type="password"></label>
+  </div>
 
-      <button id="save" type="button">Save options</button>
-      <span id="status"></span>
-    </div>
-  </main>
-  <script src="src/shared.js"></script>
-  <script src="options.js"></script>
-</body>
-</html>
+  <h2>Document</h2>
+  <div class="grid">
+    <label>Page size<select id="pageSize"><option value="a4">A4</option><option value="letter">Letter</option></select></label>
+    <label>Orientation<select id="orientation"><option value="portrait">Portrait</option><option value="landscape">Landscape</option></select></label>
+    <label>Title mode<select id="titleMode"><option value="conversation">Conversation title</option><option value="custom">Custom title</option><option value="none">No title</option></select></label>
+    <label>Custom title<input id="customTitle" placeholder="My ChatGPT Notes"></label>
+    <label>Theme<select id="theme"><option value="auto">Auto</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
+    <label>Page break<select id="pageBreakMode"><option value="none">None</option><option value="before-user">Before each user question</option><option value="each-turn">Before every message</option></select></label>
+    <label>Table of contents<select id="tocMode"><option value="none">None</option><option value="questions">Question titles</option><option value="numbering">Numbered questions</option></select></label>
+    <label>Datetime format<select id="datetimeFormat"><option value="locale">Local date/time</option><option value="iso">ISO</option></select></label>
+    <label>Top margin<input id="marginTop"></label><label>Right margin<input id="marginRight"></label>
+    <label>Bottom margin<input id="marginBottom"></label><label>Left margin<input id="marginLeft"></label>
+    <label class="check full"><input id="singlePage" type="checkbox"> Single continuous PDF page</label>
+    <label class="check full"><input id="includeSourceLink" type="checkbox"> Include conversation link</label>
+    <label class="check full"><input id="includeExportDatetime" type="checkbox"> Include exported-at date/time</label>
+    <label class="check full"><input id="showModelName" type="checkbox"> Show model name</label>
+    <label class="full">Model name<input id="modelName" placeholder="ChatGPT"></label>
+  </div>
+
+  <h2>User questions</h2>
+  <div class="grid">
+    <label class="check full"><input id="hideUserQuestions" type="checkbox"> Hide user questions</label>
+    <label>Background<input id="questionBackground" type="color"></label>
+    <label>Text color<input id="questionForeground" type="color"></label>
+    <label>Alignment<select id="questionAlign"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option><option value="justify">Justified</option></select></label>
+    <label class="check"><input id="questionRounded" type="checkbox"> Rounded question boxes</label>
+  </div>
+
+  <button id="save" type="button">Save options</button><span id="status"></span>
+</div></main>
+<script src="src/shared.js"></script><script src="options.js"></script>
+</body></html>
