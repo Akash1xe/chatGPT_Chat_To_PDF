@@ -2,7 +2,6 @@
 
 A Chrome Manifest V3 extension that exports ChatGPT conversations to PDF.
 
-
 ## Current features
 
 - Export the full ChatGPT conversation.
@@ -20,6 +19,8 @@ A Chrome Manifest V3 extension that exports ChatGPT conversations to PDF.
 - Optional source conversation link.
 - Chunked content-script → service-worker transfer for large conversations.
 - Gzip compression before sending HTML to PDFCrowd when `CompressionStream` is available.
+- Extension popup diagnostics showing current-page detection, captured-turn count, completeness, credentials status and version.
+- Friendly PDFCrowd errors for invalid credentials, rate limits, server failures and 90-second conversion timeout.
 
 ## Important: PDFCrowd credentials
 
@@ -42,6 +43,7 @@ Credentials are stored using `chrome.storage.sync`; they are not committed to th
 4. Click **Load unpacked**.
 5. Select the repository folder.
 6. Open `https://chatgpt.com/` and refresh the page.
+7. Click the extension icon once to check the diagnostics panel. It should report **ChatGPT detected** on a conversation page.
 
 ## Export modes
 
@@ -72,6 +74,18 @@ For a virtualized long conversation, the extension harvests the chat before reso
 3. Use **Add** on each message you want.
 4. Click **Export selected**.
 
+## Runtime diagnostics
+
+Click the extension toolbar icon while a ChatGPT tab is active. The popup reports:
+
+- extension version
+- whether the ChatGPT content script is responding
+- captured conversation-turn count
+- whether the conversation looks incomplete
+- whether PDFCrowd credentials are configured
+
+Use **Refresh status** after opening another conversation or after scrolling through a long chat.
+
 ## Local release checklist
 
 Before considering a build release-ready:
@@ -79,15 +93,17 @@ Before considering a build release-ready:
 1. Open the repository's GitHub Actions page and confirm **Validate Extension** passes.
 2. In `chrome://extensions`, remove any older unpacked copy, then load the repository folder again.
 3. Refresh an existing ChatGPT tab after loading or updating the extension.
-4. Verify the **Save PDF** button and dropdown appear on `chatgpt.com`.
-5. Test a short conversation with user text, assistant Markdown, a code block and a table.
-6. Test **Choose range** and select the end message before the start message once to verify reverse-range handling.
-7. Test **Select messages** with non-adjacent turns.
-8. Test a long conversation and verify the loading overlay, progress counter and Cancel button.
-9. Test the incomplete-chat warning by exporting before all older turns are available.
-10. Test A4 portrait, A4 landscape and Single Page.
-11. Verify an inaccessible ChatGPT image produces an explanatory placeholder rather than an empty gap.
-12. Confirm the browser download prompt appears and the generated PDF opens successfully.
+4. Open the extension popup and verify **ChatGPT detected**, a sensible turn count, and the expected credential state.
+5. Verify the **Save PDF** button and dropdown appear on `chatgpt.com`.
+6. Test a short conversation with user text, assistant Markdown, a code block and a table.
+7. Test **Choose range** and select the end message before the start message once to verify reverse-range handling.
+8. Test **Select messages** with non-adjacent turns.
+9. Test a long conversation and verify the loading overlay, progress counter and Cancel button.
+10. Test the incomplete-chat warning by exporting before all older turns are available.
+11. Test A4 portrait, A4 landscape and Single Page.
+12. Verify an inaccessible ChatGPT image produces an explanatory placeholder rather than an empty gap.
+13. Confirm invalid PDFCrowd credentials produce an actionable error.
+14. Confirm the browser download prompt appears and the generated PDF opens successfully.
 
 ## Project structure
 
@@ -102,7 +118,8 @@ Before considering a build release-ready:
 │   ├── selection-core.test.cjs
 │   ├── export-fidelity.test.cjs
 │   ├── advanced-options.test.cjs
-│   └── runtime-hardening.test.cjs
+│   ├── runtime-hardening.test.cjs
+│   └── runtime-diagnostics.test.cjs
 └── src/
     ├── shared.js
     ├── chatgpt-dom.js
@@ -118,8 +135,8 @@ Before considering a build release-ready:
 - `src/chatgpt-dom.js` — ChatGPT DOM adapter, turn serialization, caching, long-chat harvesting, completeness checks and cancellation.
 - `src/selection.js` — individual-message and continuous-range selection.
 - `src/export.js` — standalone HTML construction and chunked export requests.
-- `src/content.js` — injected Save PDF UI, progress/incomplete dialogs and workflow orchestration.
-- `src/background.js` — HTML reconstruction, compression, PDFCrowd request and browser download.
+- `src/content.js` — injected Save PDF UI, progress/incomplete dialogs, runtime diagnostics and workflow orchestration.
+- `src/background.js` — HTML reconstruction, compression, PDFCrowd request, error mapping and browser download.
 - `src/shared.js` — shared defaults, option storage and filename utilities.
 
 ## Reference project
@@ -132,4 +149,4 @@ That project is distributed under the MIT License. This repository does not inte
 
 ## Status
 
-The core clone plus the expanded range/message-selection workflow is implemented. Static validation and regression tests run in GitHub Actions. The remaining release gate is hands-on Chrome testing against current ChatGPT UI variants and real PDFCrowd credentials, because those runtime behaviors cannot be fully validated by repository-only CI.
+The core clone plus the expanded range/message-selection workflow is implemented. Static validation and regression tests run in GitHub Actions. Runtime diagnostics are included to make hands-on Chrome validation faster. The remaining release gate is hands-on Chrome testing against current ChatGPT UI variants and real PDFCrowd credentials, because those runtime behaviors cannot be fully validated by repository-only CI.
