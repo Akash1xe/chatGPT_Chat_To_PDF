@@ -3,13 +3,12 @@
 (async () => {
   const shared = window.ChatPdfShared;
   const valueFields = [
-    'pdfcrowdUsername','pdfcrowdApiKey','pageSize','orientation','titleMode','customTitle',
-    'theme','pageBreakMode','tocMode','datetimeFormat','marginTop','marginRight',
-    'marginBottom','marginLeft','modelName','questionBackground','questionForeground','questionAlign'
+    'pageSize','orientation','titleMode','customTitle','theme','pageBreakMode','tocMode',
+    'datetimeFormat','marginTop','marginRight','marginBottom','marginLeft','modelName',
+    'questionBackground','questionForeground','questionAlign'
   ];
   const checkFields = [
-    'singlePage','includeSourceLink','includeExportDatetime','showModelName',
-    'hideUserQuestions','questionRounded'
+    'includeSourceLink','includeExportDatetime','showModelName','hideUserQuestions','questionRounded'
   ];
 
   const options = await shared.getOptions();
@@ -26,6 +25,9 @@
     const next = { ...options };
     valueFields.forEach((id) => { next[id] = document.getElementById(id).value.trim(); });
     checkFields.forEach((id) => { next[id] = document.getElementById(id).checked; });
+    delete next.pdfcrowdUsername;
+    delete next.pdfcrowdApiKey;
+    delete next.singlePage;
     await shared.saveOptions(next);
     const status = document.getElementById('status');
     status.textContent = 'Saved';
