@@ -5,109 +5,161 @@
 
   let mode = 'none';
   let rangeStart = null;
+  let rangeEnd = null;
   const selected = new Map();
-  let cleanupFns = [];
   let onChange = null;
+  let observer = null;
+  let reconcileTimer = null;
+
+  function notify() {
+    onChange?.({
+      mode,
+      count: selected.size,
+      turns: getSelectedTurns(),
+      range: getRange()
+    });
+  }
+
+  function removeMarker(turn) {
+    turn.querySelector(':scope > .pdf-select-marker')?.remove();
+    turn.classList.remove('pdf-turn-selected', 'pdf-turn-range-start');
+  }
 
   function clearDecorations() {
     document.querySelectorAll('.pdf-select-marker').forEach((node) => node.remove());
     document.querySelectorAll('.pdf-turn-selected, .pdf-turn-range-start').forEach((node) => {
       node.classList.remove('pdf-turn-selected', 'pdf-turn-range-start');
     });
-    cleanupFns.forEach((fn) => fn());
-    cleanupFns = [];
+  }
+
+  function stopObserver() {
+    if (observer) observer.disconnect();
+    observer = null;
+    if (reconcileTimer) clearTimeout(reconcileTimer);
+    reconcileTimer = null;
   }
 
   function stop() {
+    stopObserver();
     clearDecorations();
     selected.clear();
     mode = 'none';
     rangeStart = null;
-    notify();
+    rangeEnd = null;
+    onChange = null;
   }
 
-  function notify() {
-    onChange?.({
-      mode,
-      count: selected.size,
-      turns: getSelectedTurns()
-    });
+  function descriptorNumber(turn, index) {
+    return dom.getTurnDescriptor(turn, index).number;
+  }
+
+  function applyTurnState(turn, index) {
+    const number = descriptorNumber(turn, index);
+    turn.classList.toggle('pdf-turn-selected', selected.has(number));
+    turn.classList.toggle('pdf-turn-range-start', rangeStart === number && rangeEnd === null);
+  }
+
+  function markerLabel() {
+    if (mode === 'messages') return 'Add';
+    if (rangeStart === null) return 'Start';
+    if (rangeEnd === null) return 'End';
+    return 'Selected';
   }
 
   function attachMarker(turn, index) {
-    const marker = document.createElement('button');
-    marker.type = 'button';
-    marker.className = 'pdf-select-marker';
-    marker.textContent = mode === 'range' ? 'Select' : 'Add';
-    marker.setAttribute('aria-label', 'Select this ChatGPT message for PDF export');
+    let marker = turn.querySelector(':scope > .pdf-select-marker');
+    if (!marker) {
+      marker = document.createElement('button');
+      marker.type = 'button';
+      marker.className = 'pdf-select-marker';
+      marker.setAttribute('aria-label', 'Select this ChatGPT message for PDF export');
+      marker.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const liveTurns = dom.getTurns();
+        const liveIndex = liveTurns.indexOf(turn);
+        if (liveIndex !== -1) handleTurnClick(turn, liveIndex);
+      });
 
-    const style = getComputedStyle(turn);
-    if (style.position === 'static') turn.style.position = 'relative';
-    turn.appendChild(marker);
+      const style = getComputedStyle(turn);
+      if (style.position === 'static') turn.style.position = 'relative';
+      turn.appendChild(marker);
+    }
 
-    const handler = (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      handleTurnClick(turn, index);
-    };
+    marker.textContent = markerLabel();
+    applyTurnState(turn, index);
+  }
 
-    marker.addEventListener('click', handler);
-    cleanupFns.push(() => marker.removeEventListener('click', handler));
+  function reconcileMarkers() {
+    if (mode === 'none') return;
+    const liveTurns = new Set(dom.getTurns());
+
+    document.querySelectorAll('.pdf-select-marker').forEach((marker) => {
+      const parent = marker.parentElement;
+      if (!parent || !liveTurns.has(parent)) marker.remove();
+    });
+
+    dom.getTurns().forEach((turn, index) => attachMarker(turn, index));
+  }
+
+  function scheduleReconcile() {
+    if (reconcileTimer || mode === 'none') return;
+    reconcileTimer = setTimeout(() => {
+      reconcileTimer = null;
+      reconcileMarkers();
+    }, 120);
+  }
+
+  function startObserver() {
+    observer = new MutationObserver(scheduleReconcile);
+    observer.observe(document.body, { childList: true, subtree: true });
+  }
+
+  function rebuildVisibleRangeSelection() {
+    selected.clear();
+    if (rangeStart === null || rangeEnd === null) return;
+
+    const start = Math.min(rangeStart, rangeEnd);
+    const end = Math.max(rangeStart, rangeEnd);
+    dom.getTurns().forEach((candidate, candidateIndex) => {
+      const item = dom.getTurnDescriptor(candidate, candidateIndex);
+      if (item.number >= start && item.number <= end) {
+        selected.set(item.number, item);
+      }
+    });
   }
 
   function handleTurnClick(turn, index) {
     const descriptor = dom.getTurnDescriptor(turn, index);
 
     if (mode === 'messages') {
-      if (selected.has(descriptor.number)) {
-        selected.delete(descriptor.number);
-        turn.classList.remove('pdf-turn-selected');
-      } else {
-        selected.set(descriptor.number, descriptor);
-        turn.classList.add('pdf-turn-selected');
-      }
+      if (selected.has(descriptor.number)) selected.delete(descriptor.number);
+      else selected.set(descriptor.number, descriptor);
+      reconcileMarkers();
       notify();
       return;
     }
 
     if (mode === 'range') {
-      if (rangeStart === null) {
+      if (rangeStart === null || rangeEnd !== null) {
+        selected.clear();
         rangeStart = descriptor.number;
-        turn.classList.add('pdf-turn-range-start');
-        refreshMarkerLabels('Choose end');
-        notify();
-        return;
+        rangeEnd = null;
+      } else {
+        rangeEnd = descriptor.number;
+        rebuildVisibleRangeSelection();
       }
-
-      const start = Math.min(rangeStart, descriptor.number);
-      const end = Math.max(rangeStart, descriptor.number);
-      selected.clear();
-
-      dom.getTurns().forEach((candidate, candidateIndex) => {
-        const item = dom.getTurnDescriptor(candidate, candidateIndex);
-        if (item.number >= start && item.number <= end) {
-          selected.set(item.number, item);
-          candidate.classList.add('pdf-turn-selected');
-        }
-      });
-
-      refreshMarkerLabels('Selected');
+      reconcileMarkers();
       notify();
     }
-  }
-
-  function refreshMarkerLabels(text) {
-    document.querySelectorAll('.pdf-select-marker').forEach((marker) => {
-      marker.textContent = text;
-    });
   }
 
   function start(nextMode, changeHandler) {
     stop();
     mode = nextMode;
     onChange = changeHandler || null;
-
-    dom.getTurns().forEach((turn, index) => attachMarker(turn, index));
+    reconcileMarkers();
+    startObserver();
     notify();
   }
 
@@ -115,11 +167,25 @@
     return Array.from(selected.values()).sort((a, b) => a.number - b.number);
   }
 
-  function getBrowserSelectionTurns() {
-    const selection = window.getSelection();
-    if (!selection || selection.isCollapsed || selection.rangeCount === 0) return [];
+  function getRange() {
+    if (rangeStart === null || rangeEnd === null) return null;
+    return {
+      start: Math.min(rangeStart, rangeEnd),
+      end: Math.max(rangeStart, rangeEnd)
+    };
+  }
 
-    const range = selection.getRangeAt(0);
+  function resolveRangeFromTurns(turns) {
+    const range = getRange();
+    if (!range) return [];
+    return turns.filter((turn) => turn.number >= range.start && turn.number <= range.end);
+  }
+
+  function getBrowserSelectionTurns() {
+    const browserSelection = window.getSelection();
+    if (!browserSelection || browserSelection.isCollapsed || browserSelection.rangeCount === 0) return [];
+
+    const range = browserSelection.getRangeAt(0);
     return dom.getTurns()
       .map((turn, index) => ({ turn, descriptor: dom.getTurnDescriptor(turn, index) }))
       .filter(({ turn }) => {
@@ -141,7 +207,10 @@
     },
     stop,
     getSelectedTurns,
+    getRange,
+    resolveRangeFromTurns,
     getBrowserSelectionTurns,
+    reconcileMarkers,
     getMode() {
       return mode;
     }
