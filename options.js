@@ -2,32 +2,30 @@
 
 (async () => {
   const shared = window.ChatPdfShared;
-  const fields = [
-    'pdfcrowdUsername',
-    'pdfcrowdApiKey',
-    'pageSize',
-    'orientation',
-    'theme',
-    'marginTop',
-    'marginRight',
-    'marginBottom',
-    'marginLeft'
+  const valueFields = [
+    'pdfcrowdUsername','pdfcrowdApiKey','pageSize','orientation','titleMode','customTitle',
+    'theme','pageBreakMode','tocMode','datetimeFormat','marginTop','marginRight',
+    'marginBottom','marginLeft','modelName','questionBackground','questionForeground','questionAlign'
+  ];
+  const checkFields = [
+    'singlePage','includeSourceLink','includeExportDatetime','showModelName',
+    'hideUserQuestions','questionRounded'
   ];
 
   const options = await shared.getOptions();
-  fields.forEach((id) => {
-    const element = document.getElementById(id);
-    if (element) element.value = options[id] ?? shared.defaults[id] ?? '';
+  valueFields.forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.value = options[id] ?? shared.defaults[id] ?? '';
   });
-  document.getElementById('includeSourceLink').checked = options.includeSourceLink !== false;
+  checkFields.forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.checked = Boolean(options[id]);
+  });
 
   document.getElementById('save').addEventListener('click', async () => {
     const next = { ...options };
-    fields.forEach((id) => {
-      next[id] = document.getElementById(id).value.trim();
-    });
-    next.includeSourceLink = document.getElementById('includeSourceLink').checked;
-
+    valueFields.forEach((id) => { next[id] = document.getElementById(id).value.trim(); });
+    checkFields.forEach((id) => { next[id] = document.getElementById(id).checked; });
     await shared.saveOptions(next);
     const status = document.getElementById('status');
     status.textContent = 'Saved';
